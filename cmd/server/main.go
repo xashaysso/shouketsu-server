@@ -7,27 +7,24 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"shouketsu/internal/config"
 	"shouketsu/internal/entities"
 	"shouketsu/internal/handlers/ws"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func main() {
 	router := gin.Default()
 
-	err := godotenv.Load()
-	if err != nil {
-		slog.Error("No .env file found")
-	}
+	cfg := config.LoadConfig()
 
 	// logger
 	var logger *slog.Logger
 
-	if os.Getenv("APP_ENV") == "prod" {
+	if cfg.AppEnv == "prod" {
 		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelInfo,
 		}))
@@ -39,9 +36,7 @@ func main() {
 
 	slog.SetDefault(logger)
 
-	slog.Info("Logger service has started", slog.String("env", os.Getenv("APP_ENV")))
-
-	PORT := os.Getenv("PORT")
+	slog.Info("Logger service has started", slog.String("env", cfg.AppEnv))
 
 	room := entities.NewRoom("room_test")
 	go ws.RunRoom(room)
@@ -51,7 +46,7 @@ func main() {
 	router.GET("/ws", wsHandler.ServeWS)
 
 	srv := &http.Server{
-		Addr:    ":" + PORT,
+		Addr:    ":" + cfg.Port,
 		Handler: router,
 	}
 
@@ -61,7 +56,7 @@ func main() {
 			os.Exit(1)
 		}
 	}()
-	slog.Info("server started succesfully", slog.String("port", PORT))
+	slog.Info("server started succesfully", slog.String("port", cfg.Port))
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
