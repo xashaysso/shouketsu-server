@@ -22,7 +22,10 @@ func ReadPump(c *entities.Client) {
 			break
 		}
 
-		c.Room.Broadcast <- message
+		c.Room.Actions <- entities.InAction{
+			SenderID: c.ID,
+			Raw:      message,
+		}
 	}
 }
 
