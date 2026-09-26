@@ -15,7 +15,7 @@ func (e *GameEngine) PlaySpell(senderID string, card domain.Card, target *domain
 	}
 
 	switch card.ID {
-	case "spell_fireball":
+	case "s_fireball":
 		return cards.CastFireball(e.State, target, senderID, opponentID)
 	default:
 		return domain.ErrUnknownSpell

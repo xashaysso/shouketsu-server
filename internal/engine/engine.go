@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"errors"
+	"shouketsu/internal/cards"
 	"shouketsu/internal/combat"
 	"shouketsu/internal/domain"
 )
@@ -30,25 +31,29 @@ func (e *GameEngine) StartGame(p1ID, p2ID string) {
 	e.State.CurrentTurn = p1ID
 	e.State.TurnNumber = 1
 
-	starterDeck := []domain.Card{
-		{ID: "c1", Name: "card1", Type: "minion", Cost: 1, Attack: 1, Health: 2},
-		{ID: "spell_fireball", Name: "fireball", Type: "spell", Cost: 1},
-		{ID: "c3", Name: "card3", Type: "minion", Cost: 1, Attack: 2, Health: 1},
-	}
+	p1Deck := cards.GenerateDeck(domain.MaxDeckSize)
+	p2Deck := cards.GenerateDeck(domain.MaxDeckSize)
 
 	e.State.Players[p1ID] = &domain.PlayerState{
 		ID:      p1ID,
 		Health:  30,
 		Mana:    1,
 		MaxMana: 1,
-		Hand:    append([]domain.Card{}, starterDeck...),
+		Deck:    p1Deck,
+		Hand:    make([]domain.Card, 0, domain.MaxHandSize),
 	}
 	e.State.Players[p2ID] = &domain.PlayerState{
 		ID:      p2ID,
 		Health:  30,
 		Mana:    1,
 		MaxMana: 1,
-		Hand:    append([]domain.Card{}, starterDeck...),
+		Deck:    p2Deck,
+		Hand:    make([]domain.Card, 0, domain.MaxHandSize),
+	}
+
+	for range domain.StartHandSize {
+		e.DrawCard(p1ID)
+		e.DrawCard(p2ID)
 	}
 }
 
@@ -91,10 +96,12 @@ func (e *GameEngine) EndTurn(senderID string) error {
 	e.State.TurnNumber++
 
 	nextPlayer := e.State.Players[nextTurnPlayer]
-	if nextPlayer.MaxMana < 10 {
+	if nextPlayer.MaxMana < domain.MaxManaCap {
 		nextPlayer.MaxMana++
 	}
 	nextPlayer.Mana = nextPlayer.MaxMana
+
+	e.DrawCard(nextTurnPlayer)
 
 	return nil
 }
@@ -128,5 +135,24 @@ func (e *GameEngine) playCard(senderID string, p domain.PlayCardPayload) error {
 	player.Mana -= card.Cost
 	player.Hand = append(player.Hand[:p.CardIndex], player.Hand[p.CardIndex+1:]...)
 
+	return nil
+}
+
+func (e *GameEngine) DrawCard(playerID string) error {
+	player := e.State.Players[playerID]
+
+	if len(player.Deck) == 0 {
+		player.Health -= 1
+		return nil
+	}
+
+	card := player.Deck[0]
+	player.Deck = player.Deck[1:]
+
+	if len(player.Hand) >= domain.MaxHandSize {
+		return nil
+	}
+
+	player.Hand = append(player.Hand, card)
 	return nil
 }

@@ -10,12 +10,13 @@ type Card struct {
 }
 
 type PlayerState struct {
-	ID      string   `json:"id"`
-	Health  int      `json:"health"`
-	Mana    int      `json:"mana"`
-	MaxMana int      `json:"max_mana"`
-	Hand    []Card   `json:"hand"`
-	Board   [5]*Card `json:"board"`
+	ID      string               `json:"id"`
+	Health  int                  `json:"health"`
+	Mana    int                  `json:"mana"`
+	MaxMana int                  `json:"max_mana"`
+	Deck    []Card               `json:"-"`
+	Hand    []Card               `json:"hand"`
+	Board   [MaxBoardSlots]*Card `json:"board"`
 }
 
 type GameState struct {
