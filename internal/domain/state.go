@@ -1,4 +1,4 @@
-package engine
+package domain
 
 type Card struct {
 	ID     string `json:"id"`

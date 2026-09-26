@@ -3,11 +3,11 @@ package ws
 import (
 	"encoding/json"
 	"log/slog"
+	"shouketsu/internal/domain"
 	"shouketsu/internal/engine"
-	"shouketsu/internal/entities"
 )
 
-func RunRoom(r *entities.Room) {
+func RunRoom(r *domain.Room) {
 	slog.Info("room worker started", slog.String("room_id", r.ID))
 
 	gameEngine := engine.NewGameEngine()
@@ -38,8 +38,8 @@ func RunRoom(r *entities.Room) {
 	}
 }
 
-func Broadcast(r *entities.Room, msgType string, payload any) {
-	bytes, err := json.Marshal(entities.OutMessage{
+func Broadcast(r *domain.Room, msgType string, payload any) {
+	bytes, err := json.Marshal(domain.OutMessage{
 		Type:    msgType,
 		Payload: payload,
 	})
@@ -59,8 +59,8 @@ func Broadcast(r *entities.Room, msgType string, payload any) {
 	}
 }
 
-func SendTo(r *entities.Room, targetID, msgType string, payload any) {
-	bytes, err := json.Marshal(entities.OutMessage{
+func SendTo(r *domain.Room, targetID, msgType string, payload any) {
+	bytes, err := json.Marshal(domain.OutMessage{
 		Type:    msgType,
 		Payload: payload,
 	})
@@ -82,8 +82,8 @@ func SendTo(r *entities.Room, targetID, msgType string, payload any) {
 	}
 }
 
-func HandleAction(r *entities.Room, engine *engine.GameEngine, action entities.InAction) {
-	var env entities.ActionEnvelope
+func HandleAction(r *domain.Room, engine *engine.GameEngine, action domain.InAction) {
+	var env domain.ActionEnvelope
 	if err := json.Unmarshal(action.Raw, &env); err != nil {
 		SendTo(r, action.SenderID, "ERROR", map[string]string{
 			"message": "invalid JSON format",

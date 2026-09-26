@@ -3,7 +3,7 @@ package ws
 import (
 	"log/slog"
 	"net/http"
-	"shouketsu/internal/entities"
+	"shouketsu/internal/domain"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -16,10 +16,10 @@ var upgrader = websocket.Upgrader{
 }
 
 type WShandler struct {
-	defaultRoom *entities.Room
+	defaultRoom *domain.Room
 }
 
-func NewWShandler(defaultRoom *entities.Room) *WShandler {
+func NewWShandler(defaultRoom *domain.Room) *WShandler {
 	return &WShandler{
 		defaultRoom: defaultRoom,
 	}
@@ -40,7 +40,7 @@ func (h *WShandler) ServeWS(c *gin.Context) {
 		return
 	}
 
-	client := &entities.Client{
+	client := &domain.Client{
 		ID:   playerID,
 		Room: h.defaultRoom,
 		Conn: conn,

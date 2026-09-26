@@ -2,12 +2,12 @@ package ws
 
 import (
 	"log/slog"
-	"shouketsu/internal/entities"
+	"shouketsu/internal/domain"
 
 	"github.com/gorilla/websocket"
 )
 
-func ReadPump(c *entities.Client) {
+func ReadPump(c *domain.Client) {
 	defer func() {
 		c.Room.Unregister <- c
 		c.Conn.Close()
@@ -22,14 +22,14 @@ func ReadPump(c *entities.Client) {
 			break
 		}
 
-		c.Room.Actions <- entities.InAction{
+		c.Room.Actions <- domain.InAction{
 			SenderID: c.ID,
 			Raw:      message,
 		}
 	}
 }
 
-func WritePump(c *entities.Client) {
+func WritePump(c *domain.Client) {
 	defer func() {
 		c.Conn.Close()
 	}()
