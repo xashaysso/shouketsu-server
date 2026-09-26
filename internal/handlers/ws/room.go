@@ -3,17 +3,29 @@ package ws
 import (
 	"encoding/json"
 	"log/slog"
+	"shouketsu/internal/engine"
 	"shouketsu/internal/entities"
 )
 
 func RunRoom(r *entities.Room) {
 	slog.Info("room worker started", slog.String("room_id", r.ID))
 
+	gameEngine := engine.NewGameEngine()
+
 	for {
 		select {
 		case client := <-r.Register:
 			r.Clients[client] = true
 			slog.Info("player connected", slog.String("room_id", r.ID), slog.String("player_id", client.ID), slog.Int("total_players", len(r.Clients)))
+
+			if len(r.Clients) == 2 && !gameEngine.InProgress {
+				players := make([]string, 0, 2)
+				for c := range r.Clients {
+					players = append(players, c.ID)
+				}
+				gameEngine.StartGame(players[0], players[1])
+				Broadcast(r, "GAME_STARTED", gameEngine.GetState())
+			}
 		case client := <-r.Unregister:
 			if _, ok := r.Clients[client]; ok {
 				delete(r.Clients, client)
@@ -21,7 +33,7 @@ func RunRoom(r *entities.Room) {
 				slog.Info("player disconnected", slog.String("room_id", r.ID), slog.String("player_id", client.ID))
 			}
 		case action := <-r.Actions:
-			HandleAction(r, action)
+			HandleAction(r, gameEngine, action)
 		}
 	}
 }
@@ -70,7 +82,7 @@ func SendTo(r *entities.Room, targetID, msgType string, payload any) {
 	}
 }
 
-func HandleAction(r *entities.Room, action entities.InAction) {
+func HandleAction(r *entities.Room, engine *engine.GameEngine, action entities.InAction) {
 	var env entities.ActionEnvelope
 	if err := json.Unmarshal(action.Raw, &env); err != nil {
 		SendTo(r, action.SenderID, "ERROR", map[string]string{
@@ -79,14 +91,13 @@ func HandleAction(r *entities.Room, action entities.InAction) {
 		return
 	}
 
-	switch env.Type {
-	case "PING":
-		SendTo(r, action.SenderID, "PONG", map[string]string{
-			"status": "alive",
-		})
-	default:
+	err := engine.DispatchAction(action.SenderID, env.Type, env.Payload)
+	if err != nil {
 		SendTo(r, action.SenderID, "ERROR", map[string]string{
-			"message": "unknown action: " + env.Type,
+			"message": err.Error(),
 		})
+		return
 	}
+
+	Broadcast(r, "BOARD_UPDATE", engine.GetState())
 }
