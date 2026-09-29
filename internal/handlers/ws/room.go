@@ -15,6 +15,41 @@ func RunRoom(r *domain.Room) {
 	for {
 		select {
 		case client := <-r.Register:
+
+			if gameEngine.InProgress {
+				_, isParticipant := gameEngine.State.Players[client.ID]
+				if !isParticipant {
+					errPayload, _ := json.Marshal(map[string]any{
+						"type": "ERROR",
+						"payload": map[string]string{
+							"message": "match already in progress in this room",
+						},
+					})
+					select {
+					case client.Send <- errPayload:
+					default:
+					}
+
+					close(client.Send)
+					continue
+				}
+
+				r.Clients[client] = true
+				slog.Info("player reconnected", slog.String("id", client.ID))
+
+				view := gameEngine.GetStateForPlayer(client.ID)
+				for c := range r.Clients {
+					if client.ID != c.ID {
+						SendTo(r, c.ID, "PLAYER_RECONNECTED", map[string]string{
+							"message": "Opponent reconnected. Game continues...",
+						})
+					}
+				}
+				SendTo(r, client.ID, "BOARD_UPDATE", view)
+				continue
+
+			}
+
 			r.Clients[client] = true
 			slog.Info("player connected", slog.String("room_id", r.ID), slog.String("player_id", client.ID), slog.Int("total_players", len(r.Clients)))
 
@@ -34,6 +69,14 @@ func RunRoom(r *domain.Room) {
 				delete(r.Clients, client)
 				close(client.Send)
 				slog.Info("player disconnected", slog.String("room_id", r.ID), slog.String("player_id", client.ID))
+
+				if gameEngine.InProgress {
+					for c := range r.Clients {
+						SendTo(r, c.ID, "PLAYER_LEFT", map[string]string{
+							"message": "Opponent disconnected. Waiting for reconnect...",
+						})
+					}
+				}
 			}
 		case action := <-r.Actions:
 			HandleAction(r, gameEngine, action)
