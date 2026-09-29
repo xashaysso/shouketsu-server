@@ -24,7 +24,10 @@ func RunRoom(r *domain.Room) {
 					players = append(players, c.ID)
 				}
 				gameEngine.StartGame(players[0], players[1])
-				Broadcast(r, "GAME_STARTED", gameEngine.GetState())
+
+				for client := range r.Clients {
+					SendTo(r, client.ID, "GAME_STARTED", gameEngine.GetStateForPlayer(client.ID))
+				}
 			}
 		case client := <-r.Unregister:
 			if _, ok := r.Clients[client]; ok {
@@ -56,6 +59,13 @@ func Broadcast(r *domain.Room, msgType string, payload any) {
 			close(client.Send)
 			delete(r.Clients, client)
 		}
+	}
+}
+
+func BroadcastGameState(r *domain.Room, engine *engine.GameEngine) {
+	for client := range r.Clients {
+		view := engine.GetStateForPlayer(client.ID)
+		SendTo(r, client.ID, "BOARD_UPDATE", view)
 	}
 }
 
@@ -99,7 +109,7 @@ func HandleAction(r *domain.Room, engine *engine.GameEngine, action domain.InAct
 		return
 	}
 
-	Broadcast(r, "BOARD_UPDATE", engine.GetState())
+	BroadcastGameState(r, engine)
 
 	if winner := engine.CheckWinner(); winner != "" {
 		engine.InProgress = false
