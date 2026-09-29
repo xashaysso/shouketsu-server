@@ -83,6 +83,10 @@ func (e *GameEngine) DispatchAction(senderID, actionType string, payload json.Ra
 func (e *GameEngine) EndTurn(senderID string) error {
 	combat.ResolveCombatPhase(e.GetState(), senderID)
 
+	if e.CheckWinner() != "" {
+		return nil
+	}
+
 	var nextTurnPlayer string
 
 	for id := range e.State.Players {
@@ -155,4 +159,26 @@ func (e *GameEngine) DrawCard(playerID string) error {
 
 	player.Hand = append(player.Hand, card)
 	return nil
+}
+
+func (e *GameEngine) CheckWinner() string {
+	var dead []string
+	var alive []string
+
+	for id, p := range e.State.Players {
+		if p.Health <= 0 {
+			dead = append(dead, id)
+		} else {
+			alive = append(alive, id)
+		}
+	}
+
+	if len(dead) == 2 {
+		return "DRAW"
+	}
+	if len(dead) == 1 && len(alive) == 1 {
+		return alive[0]
+	}
+
+	return ""
 }

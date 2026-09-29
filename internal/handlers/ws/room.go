@@ -100,4 +100,15 @@ func HandleAction(r *domain.Room, engine *engine.GameEngine, action domain.InAct
 	}
 
 	Broadcast(r, "BOARD_UPDATE", engine.GetState())
+
+	if winner := engine.CheckWinner(); winner != "" {
+		engine.InProgress = false
+
+		Broadcast(r, "GAME_OVER", map[string]any{
+			"winner_id": winner,
+			"is_draw":   winner == "DRAW",
+		})
+
+		slog.Info("game finished", slog.String("room_id", r.ID), slog.String("winner", winner))
+	}
 }
