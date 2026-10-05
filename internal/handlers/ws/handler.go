@@ -16,12 +16,12 @@ var upgrader = websocket.Upgrader{
 }
 
 type WShandler struct {
-	defaultRoom *domain.Room
+	roomManager *RoomManager
 }
 
-func NewWShandler(defaultRoom *domain.Room) *WShandler {
+func NewWShandler(m *RoomManager) *WShandler {
 	return &WShandler{
-		defaultRoom: defaultRoom,
+		roomManager: m,
 	}
 }
 
@@ -33,6 +33,13 @@ func (h *WShandler) ServeWS(c *gin.Context) {
 		})
 		return
 	}
+	roomID := c.Query("room")
+	if roomID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "query param 'room' required", // will be changed later on to random matchmaking UUID
+		})
+		return
+	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -40,9 +47,11 @@ func (h *WShandler) ServeWS(c *gin.Context) {
 		return
 	}
 
+	room := h.roomManager.CreateRoom(roomID)
+
 	client := &domain.Client{
 		ID:   playerID,
-		Room: h.defaultRoom,
+		Room: room,
 		Conn: conn,
 		Send: make(chan []byte, 256),
 	}

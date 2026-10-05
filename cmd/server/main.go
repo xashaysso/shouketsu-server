@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"shouketsu/internal/config"
-	"shouketsu/internal/domain"
 	"shouketsu/internal/handlers/ws"
 	"syscall"
 	"time"
@@ -38,10 +37,9 @@ func main() {
 
 	slog.Info("Logger service has started", slog.String("env", cfg.AppEnv))
 
-	room := domain.NewRoom("room_test")
-	go ws.RunRoom(room)
+	roomManager := ws.NewRoomManager()
 
-	wsHandler := ws.NewWShandler(room)
+	wsHandler := ws.NewWShandler(roomManager)
 
 	router.GET("/ws", wsHandler.ServeWS)
 

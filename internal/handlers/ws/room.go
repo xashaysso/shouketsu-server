@@ -7,7 +7,7 @@ import (
 	"shouketsu/internal/engine"
 )
 
-func RunRoom(r *domain.Room) {
+func RunRoom(r *domain.Room, onEmpty func(roomID string)) {
 	slog.Info("room worker started", slog.String("room_id", r.ID))
 
 	gameEngine := engine.NewGameEngine()
@@ -78,6 +78,13 @@ func RunRoom(r *domain.Room) {
 						})
 					}
 				}
+			}
+			if len(r.Clients) == 0 {
+				slog.Info("room is empty, stopping worker...")
+				if onEmpty != nil {
+					onEmpty(client.Room.ID) // instead of stopping immediately make a timer after both players disconnected for ~30s
+				}
+				return
 			}
 		case action := <-r.Actions:
 			HandleAction(r, gameEngine, action)

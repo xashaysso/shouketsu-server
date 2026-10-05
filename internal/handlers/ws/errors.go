@@ -2,7 +2,12 @@ package ws
 
 import (
 	"encoding/json"
+	"errors"
 	"shouketsu/internal/domain"
+)
+
+var (
+	ErrNonExistentRoom = errors.New("This room doesn't exist")
 )
 
 func SendError(client *domain.Client, message string) {
