@@ -16,21 +16,22 @@ func RunRoom(r *domain.Room) {
 		select {
 		case client := <-r.Register:
 
+			isNameTaken := false
+			for c := range r.Clients {
+				if c.ID == client.ID {
+					isNameTaken = true
+					break
+				}
+			}
+			if isNameTaken {
+				SendError(client, "this username is already taken in this room")
+				continue
+			}
+
 			if gameEngine.InProgress {
 				_, isParticipant := gameEngine.State.Players[client.ID]
 				if !isParticipant {
-					errPayload, _ := json.Marshal(map[string]any{
-						"type": "ERROR",
-						"payload": map[string]string{
-							"message": "match already in progress in this room",
-						},
-					})
-					select {
-					case client.Send <- errPayload:
-					default:
-					}
-
-					close(client.Send)
+					SendError(client, "match already in progress in this room")
 					continue
 				}
 
