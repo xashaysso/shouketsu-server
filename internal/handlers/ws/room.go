@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"shouketsu/internal/domain"
 	"shouketsu/internal/engine"
+	"time"
 )
 
 func RunRoom(r *domain.Room, onEmpty func(roomID string)) {
@@ -12,9 +13,20 @@ func RunRoom(r *domain.Room, onEmpty func(roomID string)) {
 
 	gameEngine := engine.NewGameEngine()
 
+	const idleTimeout = 30 * time.Second
+	var idleTimer *time.Timer
+	var idleChan <-chan time.Time
+
 	for {
 		select {
 		case client := <-r.Register:
+
+			if idleTimer != nil {
+				idleTimer.Stop()
+				idleTimer = nil
+				idleChan = nil
+				slog.Info("room activity resumed, idle timer canceled", slog.String("room_id", r.ID))
+			}
 
 			isNameTaken := false
 			for c := range r.Clients {
@@ -80,12 +92,17 @@ func RunRoom(r *domain.Room, onEmpty func(roomID string)) {
 				}
 			}
 			if len(r.Clients) == 0 {
-				slog.Info("room is empty, stopping worker...")
-				if onEmpty != nil {
-					onEmpty(client.Room.ID) // instead of stopping immediately make a timer after both players disconnected for ~30s
-				}
-				return
+				slog.Info("room is empty, idle timer started...", slog.String("room_id", r.ID), slog.Duration("timeout", idleTimeout))
+				idleTimer = time.NewTimer(idleTimeout)
+				idleChan = idleTimer.C
 			}
+		case <-idleChan:
+			if onEmpty != nil {
+				slog.Info("room in idle for too long, stopping...", slog.String("room_id", r.ID))
+				onEmpty(r.ID)
+			}
+			return
+
 		case action := <-r.Actions:
 			HandleAction(r, gameEngine, action)
 		}
